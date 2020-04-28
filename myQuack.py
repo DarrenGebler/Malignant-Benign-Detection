@@ -14,9 +14,16 @@ You are welcome to use the pandas library if you know it.
 '''
 
 import numpy as np
-from numpy import genfromtxt
+import pandas as pd
 import sklearn
-# import tensorflow as tf
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import NearestNeighbors
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error
+import tensorflow as tf
+from tensorflow import keras
 import csv
 
 
@@ -54,17 +61,16 @@ def prepare_dataset(dataset_path):
     X,y
     """
     data_list = list(csv.reader(open(dataset_path), delimiter=','))
-    x = np.array(data_list)
-    y = [val[1] for val in x]
+    X = np.array(data_list)
+    y = [val[1] for val in X]
     for n, i in enumerate(y):
         if i == 'M':
             y[n] = 1
         elif i == 'B':
             y[n] = 0
+    X = X[:, 2:]
     y = np.array(y)
-    print(x[5,:])
-    print(y[19])
-    return x, y
+    return X.astype(np.float64), y.astype(np.int)
 
 
 
@@ -73,82 +79,102 @@ def prepare_dataset(dataset_path):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-if __name__ == '__main__':
-    path = "medical_records.data"
-    prepare_dataset(path)
 
 def build_DecisionTree_classifier(X_training, y_training):
-    '''  
+    """
     Build a Decision Tree classifier based on the training set X_training, y_training.
 
-    @param 
-	X_training: X_training[i,:] is the ith example
-	y_training: y_training[i] is the class label of X_training[i,:]
+    @param
+    X_training: X_training[i,:] is the ith example
+    y_training: y_training[i] is the class label of X_training[i,:]
 
     @return
-	clf : the classifier built in this function
-    '''
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+    clf : the classifier built in this function
+    """
+    decision_tree_classifier = DecisionTreeClassifier(random_state=1)
+
+    decision_tree_classifier.fit(X_training, y_training)
+
+    return decision_tree_classifier
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def build_NearrestNeighbours_classifier(X_training, y_training):
-    '''  
-    Build a Nearrest Neighbours classifier based on the training set X_training, y_training.
+    """
+    Build a Nearest Neighbours classifier based on the training set X_training, y_training.
 
-    @param 
-	X_training: X_training[i,:] is the ith example
-	y_training: y_training[i] is the class label of X_training[i,:]
+    @param
+    X_training: X_training[i,:] is the ith example
+    y_training: y_training[i] is the class label of X_training[i,:]
 
     @return
-	clf : the classifier built in this function
-    '''
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+    clf : the classifier built in this function
+    """
+    nearest_neighbour_classifier = NearestNeighbors()
+
+    nearest_neighbour_classifier.fit(X_training, y_training)
+
+    return nearest_neighbour_classifier
+
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def build_SupportVectorMachine_classifier(X_training, y_training):
-    '''  
+    """
     Build a Support Vector Machine classifier based on the training set X_training, y_training.
 
-    @param 
-	X_training: X_training[i,:] is the ith example
-	y_training: y_training[i] is the class label of X_training[i,:]
+    @param
+    X_training: X_training[i,:] is the ith example
+    y_training: y_training[i] is the class label of X_training[i,:]
 
     @return
-	clf : the classifier built in this function
-    '''
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+    clf : the classifier built in this function
+    """
+    svm_classifier = SVC(random_state=1, gamma='auto')
 
+    svm_classifier.fit(X_training, y_training)
+
+    return svm_classifier
+
+
+if __name__ == '__main__':
+    path = "medical_records.data"
+    X, y = prepare_dataset(path)
+    X_training, X_val, y_training, y_val = train_test_split(X, y, random_state=0)
+
+    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
+    svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
+
+    val_predictions_dt = decision_tree_classifier.predict(X_val)
+    # val_predictions_nn = nearest_neighbour_classifier.score(X_val)
+    val_predictions_svm = svm_classifier.predict(X_val)
+
+    print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
+    # print("MAE for Nearest Neighbour Classifier: {}".format(mean_absolute_error(y_val, val_predictions_nn)))
+    print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def build_NeuralNetwork_classifier(X_training, y_training):
-    '''  
-    Build a Neural Network classifier (with two dense hidden layers)  
+    """
+    Build a Neural Network classifier (with two dense hidden layers)
     based on the training set X_training, y_training.
     Use the Keras functions from the Tensorflow library
 
-    @param 
-	X_training: X_training[i,:] is the ith example
-	y_training: y_training[i] is the class label of X_training[i,:]
+    @param
+    X_training: X_training[i,:] is the ith example
+    y_training: y_training[i] is the class label of X_training[i,:]
 
     @return
-	clf : the classifier built in this function
-    '''
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+    clf : the classifier built in this function
+    """
 
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    neural_net_classifier = tf.keras.models.
 
-    ## AND OTHER FUNCTIONS TO COMPLETE THE EXPERIMENTS
-    ##         "INSERT YOUR CODE HERE"    
-    raise NotImplementedError()
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

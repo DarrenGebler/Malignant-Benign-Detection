@@ -14,19 +14,18 @@ You are welcome to use the pandas library if you know it.
 '''
 
 import numpy as np
+import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import classification_report
-from sklearn.metrics import mean_absolute_error
-import tensorflow as tf
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import mean_absolute_error, f1_score, accuracy_score, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Activation, Dropout
-from sklearn.model_selection import StratifiedKFold
-
-import csv
+from tensorflow.keras.layers import Dense
+from sklearn.feature_selection import RFECV, SelectKBest, chi2
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -62,17 +61,23 @@ def prepare_dataset(dataset_path):
     @return
     X,y
     """
-    data_list = list(csv.reader(open(dataset_path), delimiter=','))
-    X = np.array(data_list)
-    y = [val[1] for val in X]
-    for n, i in enumerate(y):
-        if i == 'M':
-            y[n] = 1
-        elif i == 'B':
-            y[n] = 0
-    X = X[:, 2:]
-    y = np.array(y)
-    return X.astype(np.float64), y.astype(np.int)
+    column_headers = ['ID', 'Diagnosis', 'Mean Radius', 'Mean Texture', 'Mean Perimeter', 'Mean Area',
+                      'Mean Smoothness', 'Mean Compactness', 'Mean Concavity', 'Mean Concave Points', 'Mean Symmetry',
+                      'Mean Fractal', 'SE Radius', 'SE Texture', 'SE Perimeter', 'SE Area', 'SE Smoothness',
+                      'SE Compactness', 'SE Concavity', 'SE Concave Points', 'SE Symmetry', 'SE Fractal',
+                      'Worst Radius', 'Worst Texture', 'Worst Perimeter', 'Worst Area', 'Worst Smoothness',
+                      'Worst Compactness', 'Worst Concavity', 'Worst Concave Points', 'Worst Symmetry', 'Worst Fractal']
+
+    data = pd.read_csv(dataset_path, names=column_headers)
+
+    X = data.iloc[:, 2:32]
+    y = data.iloc[:, 1]
+
+    diagnosis_encoder = LabelEncoder()
+    y = diagnosis_encoder.fit_transform(y)
+    print(data.columns)
+
+    return X, y
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -91,33 +96,29 @@ def build_DecisionTree_classifier(X_training, y_training):
     """
 
     tuned_parameters = [{'criterion': ['gini'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
-                         'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]},
-                        {'criterion': ['entropy'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
                          'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]}]
 
-    scores = ['precision', 'recall']
+    print("# Tuning hyper-parameters for precision")
+    print()
 
-    for score in scores:
-        print("# Tuning hyper-parameters for %s" % score)
-        print()
+    clf = GridSearchCV(
+        DecisionTreeClassifier(), tuned_parameters, scoring='%s_macro' % 'precision'
+    )
+    clf.fit(X_training, y_training)
 
-        clf = GridSearchCV(
-            DecisionTreeClassifier(), tuned_parameters, scoring='%s_macro' % score
-        )
-        clf.fit(X_training, y_training)
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    means = clf.cv_results_['mean_test_score']
+    stds = clf.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean, std * 2, params))
+    print()
 
-        print("Best parameters set found on development set:")
-        print()
-        print(clf.best_params_)
-        print()
-        print("Grid scores on development set:")
-        print()
-        means = clf.cv_results_['mean_test_score']
-        stds = clf.cv_results_['std_test_score']
-        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-            print("%0.3f (+/-%0.03f) for %r"
-                  % (mean, std * 2, params))
-        print()
 
     decision_tree_classifier = DecisionTreeClassifier(criterion=clf.best_params_['criterion'], max_depth=clf.best_params_['max_depth'],
                                                       max_leaf_nodes=clf.best_params_['max_leaf_nodes'], random_state=1)
@@ -251,30 +252,39 @@ def build_NeuralNetwork_classifier(X_training, y_training):
 
     return model
 
+def neural_Network_testing(neural_network_classifier, X_val, y_val):
+    neural_network_classifier_pred = neural_network_classifier.predict(X_val)
+    print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
+    print("Accuracy Score for Neural Network Classifier: {}".format(accuracy_score(y_val, neural_network_classifier_pred)))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if __name__ == '__main__':
     path = "medical_records.data"
     X, y = prepare_dataset(path)
-    X_training, X_val, y_training, y_val = train_test_split(X, y, random_state=1)
+    X, X_test, y, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_training, X_val, y_training, y_val = train_test_split(X, y, test_size=0.2, random_state=1)
 
-    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
-    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training, X_val, y_val)
-    svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training, X_val, y_val)
+    decision_tree_classifier = build_DecisionTree_classifier(X, y)
+    # nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
+    # svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
 
     val_predictions_dt = decision_tree_classifier.predict(X_val)
-    val_predictions_nn = nearest_neighbour_classifier.score(X_val, y_val)
-    val_predictions_svm = svm_classifier.predict(X_val)
+    # val_predictions_nn = nearest_neighbour_classifier.score(X_val, y_val)
+    # val_predictions_svm = svm_classifier.predict(X_val)
 
     print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
-    print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
-    print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
+    print("Accuracy Score for Decision Tree Classifier: {}".format(accuracy_score(y_val, val_predictions_dt)))
+    cm_2 = confusion_matrix(y_test, decision_tree_classifier.predict(X_test))
+    sns.heatmap(cm_2, annot=True, fmt='d')
+    plt.show()
+    # print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
+    # print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
-    neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
-    #
-    neural_network_classifier_pred = neural_network_classifier.predict(X_val)
-    #
-    print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
+    # neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    # #
+    # neural_network_classifier_pred = neural_network_classifier.predict(X_val)
+    # #
+    # print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
 
     # score = decision_tree_classifier.evaluate(X_val, y_val, batch_size=16)
     # print("Score = {}".format(score))

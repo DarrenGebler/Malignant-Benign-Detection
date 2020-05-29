@@ -341,11 +341,11 @@ if __name__ == '__main__':
 
 
 
-    # neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
     #
-    # neural_network_classifier_pred = neural_network_classifier.predict(X_val)
+    neural_network_classifier_pred = neural_network_classifier.predict(X_val)
     #
-    # print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
+    print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
 
     # score = decision_tree_classifier.evaluate(X_val, y_val, batch_size=16)
     # print("Score = {}".format(score))

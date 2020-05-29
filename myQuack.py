@@ -23,7 +23,9 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import mean_absolute_error
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Activation, Dropout
+from tensorflow.keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import StratifiedKFold
 
 import csv
@@ -247,8 +249,10 @@ def build_NeuralNetwork_classifier(X_training, y_training):
     model.add(Dense(units=1, kernel_initializer='uniform', activation='sigmoid'))
 
     model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-    model.fit(X_training, y_training, epochs=100, batch_size=1)
+    #model.fit(X_training, y_training, epochs=100, batch_size=1)
 
+    _, accuracy = model.evaluate(X_training, y_training)
+    print('Accuracy: %.2f' % (accuracy * 100))
     return model
 
 
@@ -258,19 +262,33 @@ if __name__ == '__main__':
     X, y = prepare_dataset(path)
     X_training, X_val, y_training, y_val = train_test_split(X, y, random_state=1)
 
-    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
-    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training, X_val, y_val)
-    svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training, X_val, y_val)
+    #decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    #nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
+    #svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
 
-    val_predictions_dt = decision_tree_classifier.predict(X_val)
-    val_predictions_nn = nearest_neighbour_classifier.score(X_val, y_val)
-    val_predictions_svm = svm_classifier.predict(X_val)
+    #val_predictions_dt = decision_tree_classifier.predict(X_val)
+    #val_predictions_nn = nearest_neighbour_classifier.score(X_val, y_val)
+    #val_predictions_svm = svm_classifier.predict(X_val)
 
-    print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
-    print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
-    print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
+    #print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
+    #print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
+    #print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
-    neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    #neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    neural_network_classifier= KerasClassifier(build_fn=build_NeuralNetwork_classifier(X_training, y_training), batch_size = 10, epochs = 100)
+    # Tune number of Neurons in Hidden layer
+    #accuracies = cross_val_score(estimator=neural_network_classifier, X = X_training, y = y_training, cv=10)
+    neurons=[1,5,10,15,20,25,30]
+    param_grid = dict(neurons=neurons)
+    grid = GridSearchCV(estimator=neural_network_classifier, param_grid=param_grid, n_jobs=-1, cv=3)
+    grid_result = grid.fit(X_training, y_training)
+    # summarize results
+    print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+    means = grid_result.cv_results_['mean_test_score']
+    stds = grid_result.cv_results_['std_test_score']
+    params = grid_result.cv_results_['params']
+    for mean, stdev, param in zip(means, stds, params):
+        print("%f (%f) with: %r" % (mean, stdev, param))
     #
     neural_network_classifier_pred = neural_network_classifier.predict(X_val)
     #

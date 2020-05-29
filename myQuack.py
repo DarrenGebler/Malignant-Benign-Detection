@@ -78,7 +78,7 @@ def prepare_dataset(dataset_path):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-def build_DecisionTree_classifier(X_training, y_training, X_val, y_val):
+def build_DecisionTree_classifier(X_training, y_training):
     """
     Build a Decision Tree classifier based on the training set X_training, y_training.
 
@@ -89,23 +89,11 @@ def build_DecisionTree_classifier(X_training, y_training, X_val, y_val):
     @return
     clf : the classifier built in this function
     """
-    criterion, max_depth, max_leaf_nodes = best_DecisionTree_classifier_parameters(X_training, y_training, X_val, y_val)
 
-    decision_tree_classifier = DecisionTreeClassifier(criterion=criterion, max_depth=max_depth, max_leaf_nodes=max_leaf_nodes, random_state=1)
-
-    decision_tree_classifier.fit(X_training, y_training)
-
-    return decision_tree_classifier
-
-
-def best_DecisionTree_classifier_parameters(X_training, y_training, X_val, y_val):
-    """
-        Finds the best parameters to use based on the dataset for Decision Tree Classifier
-    """
-
-
-    tuned_parameters = [{'criterion': ['gini'], 'max_depth': [1, 5, 25, 50, 100, 250, 500], 'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]},
-                        {'criterion': ['entropy'], 'max_depth': [1, 5, 25, 50, 100, 250, 500], 'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]}]
+    tuned_parameters = [{'criterion': ['gini'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
+                         'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]},
+                        {'criterion': ['entropy'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
+                         'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]}]
 
     scores = ['precision', 'recall']
 
@@ -131,20 +119,16 @@ def best_DecisionTree_classifier_parameters(X_training, y_training, X_val, y_val
                   % (mean, std * 2, params))
         print()
 
-        print("Detailed classification report:")
-        print()
-        print("The model is trained on the full development set.")
-        print("The scores are computed on the full evaluation set.")
-        print()
-        y_true, y_pred = y_val, clf.predict(X_val)
-        print(classification_report(y_true, y_pred))
-        print()
+    decision_tree_classifier = DecisionTreeClassifier(criterion=clf.best_params_['criterion'], max_depth=clf.best_params_['max_depth'],
+                                                      max_leaf_nodes=clf.best_params_['max_leaf_nodes'], random_state=1)
 
-    return clf.best_params_['criterion'], clf.best_params_['max_depth'], clf.best_params_['max_leaf_nodes']
+    decision_tree_classifier.fit(X_training, y_training)
+
+    return decision_tree_classifier
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-def build_NearrestNeighbours_classifier(X_training, y_training, X_val, y_val):
+def build_NearrestNeighbours_classifier(X_training, y_training):
     """
     Build a Nearest Neighbours classifier based on the training set X_training, y_training.
 
@@ -156,21 +140,8 @@ def build_NearrestNeighbours_classifier(X_training, y_training, X_val, y_val):
     clf : the classifier built in this function
     """
 
-    n_neighbors, leaf_size = best_NearestNeighbours_classifier_parameters(X_training, y_training, X_val, y_val)
-
-    nearest_neighbour_classifier = KNeighborsClassifier(n_neighbors=n_neighbors, leaf_size=leaf_size)
-
-    nearest_neighbour_classifier.fit(X_training, y_training)
-
-    return nearest_neighbour_classifier
-
-
-def best_NearestNeighbours_classifier_parameters(X_training, y_training, X_val, y_val):
-    """
-        Finds the best parameters to use based on the dataset for Decision Tree Classifier
-    """
-
-    tuned_parameters = [{'n_neighbors': [1, 3, 5, 10, 15, 20, 30, 50, 100], 'leaf_size': [1, 3, 5, 10, 15, 20, 30, 50, 100]}]
+    tuned_parameters = [
+        {'n_neighbors': [1, 3, 5, 10, 15, 20, 30, 50, 100], 'leaf_size': [1, 3, 5, 10, 15, 20, 30, 50, 100]}]
 
     scores = ['precision', 'recall']
 
@@ -196,22 +167,17 @@ def best_NearestNeighbours_classifier_parameters(X_training, y_training, X_val, 
                   % (mean, std * 2, params))
         print()
 
-        print("Detailed classification report:")
-        print()
-        print("The model is trained on the full development set.")
-        print("The scores are computed on the full evaluation set.")
-        print()
-        y_true, y_pred = y_val, clf.predict(X_val)
-        print(classification_report(y_true, y_pred))
-        print()
+    nearest_neighbour_classifier = KNeighborsClassifier(n_neighbors=clf.best_params_['n_neighbors'], leaf_size=clf.best_params_['leaf_size'])
 
-    return clf.best_params_['n_neighbors'], clf.best_params_['leaf_size']
+    nearest_neighbour_classifier.fit(X_training, y_training)
+
+    return nearest_neighbour_classifier
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-
-def build_SupportVectorMachine_classifier(X_training, y_training, X_val, y_val):
+def build_SupportVectorMachine_classifier(X_training, y_training):
     """
     Build a Support Vector Machine classifier based on the training set X_training, y_training.
 
@@ -221,19 +187,6 @@ def build_SupportVectorMachine_classifier(X_training, y_training, X_val, y_val):
 
     @return
     clf : the classifier built in this function
-    """
-    kernel, C = best_SupportVectorMachine_classifier_parameters(X_training, y_training, X_val, y_val)
-
-    svm_classifier = SVC(kernel=kernel, C=C, random_state=1)
-
-    svm_classifier.fit(X_training, y_training)
-
-    return svm_classifier
-
-
-def best_SupportVectorMachine_classifier_parameters(X_training, y_training, X_val, y_val):
-    """
-        Finds the best parameters to use based on the dataset for Decision Tree Classifier
     """
 
     tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]},
@@ -263,36 +216,13 @@ def best_SupportVectorMachine_classifier_parameters(X_training, y_training, X_va
                   % (mean, std * 2, params))
         print()
 
-        print("Detailed classification report:")
-        print()
-        print("The model is trained on the full development set.")
-        print("The scores are computed on the full evaluation set.")
-        print()
-        y_true, y_pred = y_val, clf.predict(X_val)
-        print(classification_report(y_true, y_pred))
-        print()
+    svm_classifier = SVC(kernel=clf.best_params_['kernel'], C=clf.best_params_['C'], random_state=1)
 
-    return clf.best_params_['kernel'], clf.best_params_['C']
+    svm_classifier.fit(X_training, y_training)
+
+    return svm_classifier
 
 
-
-
-# if __name__ == '__main__':
-#     path = "medical_records.data"
-#     X, y = prepare_dataset(path)
-#     X_training, X_val, y_training, y_val = train_test_split(X, y, random_state=0)
-#
-#     decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
-#     nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
-#     svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
-#
-#     val_predictions_dt = decision_tree_classifier.predict(X_val)
-#     # val_predictions_nn = nearest_neighbour_classifier.score(X_val)
-#     val_predictions_svm = svm_classifier.predict(X_val)
-#
-#     print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
-#     # print("MAE for Nearest Neighbour Classifier: {}".format(mean_absolute_error(y_val, val_predictions_nn)))
-#     print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -312,8 +242,8 @@ def build_NeuralNetwork_classifier(X_training, y_training):
 
     model = Sequential()
     model.add(Dense(units=16, kernel_initializer='uniform', activation='relu', input_dim=30))
-    model.add(Dense(units=8,kernel_initializer='uniform',activation='relu'))
-    model.add(Dense(units=6,kernel_initializer='uniform', activation='relu'))
+    model.add(Dense(units=8, kernel_initializer='uniform', activation='relu'))
+    model.add(Dense(units=6, kernel_initializer='uniform', activation='relu'))
     model.add(Dense(units=1, kernel_initializer='uniform', activation='sigmoid'))
 
     model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
@@ -321,14 +251,15 @@ def build_NeuralNetwork_classifier(X_training, y_training):
 
     return model
 
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if __name__ == '__main__':
     path = "medical_records.data"
     X, y = prepare_dataset(path)
     X_training, X_val, y_training, y_val = train_test_split(X, y, random_state=1)
 
-    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training, X_val, y_val)
-    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training,X_val, y_val)
+    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training, X_val, y_val)
     svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training, X_val, y_val)
 
     val_predictions_dt = decision_tree_classifier.predict(X_val)
@@ -339,8 +270,6 @@ if __name__ == '__main__':
     print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
     print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
-
-
     neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
     #
     neural_network_classifier_pred = neural_network_classifier.predict(X_val)
@@ -349,8 +278,6 @@ if __name__ == '__main__':
 
     # score = decision_tree_classifier.evaluate(X_val, y_val, batch_size=16)
     # print("Score = {}".format(score))
-
-
 
     # print(decision_tree_classifier.score(X_val, y_val))
 

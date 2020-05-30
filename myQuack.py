@@ -13,6 +13,11 @@ You are welcome to use the pandas library if you know it.
 
 '''
 
+# from numpy.random import seed
+# seed(1)
+# from tensorflow import set_random_seed
+# set_random_seed(2)
+
 import numpy as np
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
@@ -61,6 +66,7 @@ def prepare_dataset(dataset_path):
     @return
     X,y
     """
+    # Define array with the correspondent name of each value in the given data
     column_headers = ['ID', 'Diagnosis', 'Mean Radius', 'Mean Texture', 'Mean Perimeter', 'Mean Area',
                       'Mean Smoothness', 'Mean Compactness', 'Mean Concavity', 'Mean Concave Points', 'Mean Symmetry',
                       'Mean Fractal', 'SE Radius', 'SE Texture', 'SE Perimeter', 'SE Area', 'SE Smoothness',
@@ -68,14 +74,18 @@ def prepare_dataset(dataset_path):
                       'Worst Radius', 'Worst Texture', 'Worst Perimeter', 'Worst Area', 'Worst Smoothness',
                       'Worst Compactness', 'Worst Concavity', 'Worst Concave Points', 'Worst Symmetry', 'Worst Fractal']
 
+    # Read the data from file
     data = pd.read_csv(dataset_path, names=column_headers)
 
+    # create numpy arrays
     X = data.iloc[:, 2:32]
     y = data.iloc[:, 1]
 
+    # Label data and set 1 for "M" and 0 for "B"
     diagnosis_encoder = LabelEncoder()
     y = diagnosis_encoder.fit_transform(y)
 
+    # Return numpy arrays
     return X, y
 
 
@@ -347,6 +357,15 @@ def build_NeuralNetwork_classifier(X_training, y_training):
 
 
 def neural_Network_test(neural_network_classifier, X_test, y_test):
+    """
+    Test a Neural Network classifier (with two dense hidden layers)
+    and print Heatmap
+
+    @param
+    neural_network_classifier: neural network Model
+    X_test: X_test
+    y_test: y_test
+    """
     neural_network_classifier_pred = neural_network_classifier.predict(X_test)
     print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_test, neural_network_classifier_pred)))
     print("Accuracy Score for Neural Network Classifier: {}".format(
@@ -361,6 +380,7 @@ def neural_Network_test(neural_network_classifier, X_test, y_test):
     cm_2 = confusion_matrix(y_test, pred_np)
     neuralnet_plot = plt.axes()
     sns.heatmap(cm_2, annot=True, fmt='d', ax=neuralnet_plot)
+    # Show Heatmap
     neuralnet_plot.set_title("Neural Network Heatmap")
     plt.show()
 

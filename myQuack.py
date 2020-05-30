@@ -18,12 +18,13 @@ import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import mean_absolute_error, f1_score, accuracy_score, confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, cross_val_score
+from sklearn.metrics import mean_absolute_error, classification_report, accuracy_score, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
+from sklearn.neural_network import MLPClassifier
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
-from sklearn.feature_selection import RFECV, SelectKBest, chi2
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -75,7 +76,6 @@ def prepare_dataset(dataset_path):
 
     diagnosis_encoder = LabelEncoder()
     y = diagnosis_encoder.fit_transform(y)
-    print(data.columns)
 
     return X, y
 
@@ -94,6 +94,7 @@ def build_DecisionTree_classifier(X_training, y_training):
     @return
     clf : the classifier built in this function
     """
+    X_train, X_val, y_train, y_val = train_test_split(X_training, y_training, test_size=0.2, random_state=2)
 
     tuned_parameters = [{'criterion': ['gini'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
                          'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]}]
@@ -102,9 +103,9 @@ def build_DecisionTree_classifier(X_training, y_training):
     print()
 
     clf = GridSearchCV(
-        DecisionTreeClassifier(), tuned_parameters, scoring='%s_macro' % 'precision'
+        DecisionTreeClassifier(), tuned_parameters, scoring='precision'
     )
-    clf.fit(X_training, y_training)
+    clf.fit(X_train, y_train)
 
     print("Best parameters set found on development set:")
     print()
@@ -118,14 +119,34 @@ def build_DecisionTree_classifier(X_training, y_training):
         print("%0.3f (+/-%0.03f) for %r"
               % (mean, std * 2, params))
     print()
+    print("Detailed classification report:")
+    print()
+    print("The model is trained on the full development set.")
+    print("The scores are computed on the full evaluation set.")
+    print()
+    y_true, y_pred = y_val, clf.predict(X_val)
+    print(classification_report(y_true, y_pred))
+    print()
 
-
-    decision_tree_classifier = DecisionTreeClassifier(criterion=clf.best_params_['criterion'], max_depth=clf.best_params_['max_depth'],
+    decision_tree_classifier = DecisionTreeClassifier(criterion=clf.best_params_['criterion'],
+                                                      max_depth=clf.best_params_['max_depth'],
                                                       max_leaf_nodes=clf.best_params_['max_leaf_nodes'], random_state=1)
 
     decision_tree_classifier.fit(X_training, y_training)
 
     return decision_tree_classifier
+
+
+def decision_tree_test(dt_model, X_test, y_test):
+    val_predictions_dt = dt_model.predict(X_test)
+    print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_test, val_predictions_dt)))
+    print("Accuracy Score for Decision Tree Classifier: {}".format(accuracy_score(y_test, val_predictions_dt)))
+    cm_2 = confusion_matrix(y_test, val_predictions_dt)
+    dt_plot = plt.axes()
+    sns.heatmap(cm_2, annot=True, fmt='d', ax=dt_plot)
+    dt_plot.set_title("Decision Tree Heatmap")
+    plt.show()
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -140,39 +161,57 @@ def build_NearrestNeighbours_classifier(X_training, y_training):
     @return
     clf : the classifier built in this function
     """
+    X_train, X_val, y_train, y_val = train_test_split(X_training, y_training, test_size=0.2, random_state=2)
 
     tuned_parameters = [
         {'n_neighbors': [1, 3, 5, 10, 15, 20, 30, 50, 100], 'leaf_size': [1, 3, 5, 10, 15, 20, 30, 50, 100]}]
 
-    scores = ['precision', 'recall']
+    print("# Tuning hyper-parameters for %s" % 'precision')
+    print()
 
-    for score in scores:
-        print("# Tuning hyper-parameters for %s" % score)
-        print()
+    clf = GridSearchCV(
+        KNeighborsClassifier(), tuned_parameters, scoring='precision'
+    )
+    clf.fit(X_train, y_train)
 
-        clf = GridSearchCV(
-            KNeighborsClassifier(), tuned_parameters, scoring='%s_macro' % score
-        )
-        clf.fit(X_training, y_training)
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    means = clf.cv_results_['mean_test_score']
+    stds = clf.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean, std * 2, params))
+    print()
+    print("Detailed classification report:")
+    print()
+    print("The model is trained on the full development set.")
+    print("The scores are computed on the full evaluation set.")
+    print()
+    y_true, y_pred = y_val, clf.predict(X_val)
+    print(classification_report(y_true, y_pred))
+    print()
 
-        print("Best parameters set found on development set:")
-        print()
-        print(clf.best_params_)
-        print()
-        print("Grid scores on development set:")
-        print()
-        means = clf.cv_results_['mean_test_score']
-        stds = clf.cv_results_['std_test_score']
-        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-            print("%0.3f (+/-%0.03f) for %r"
-                  % (mean, std * 2, params))
-        print()
-
-    nearest_neighbour_classifier = KNeighborsClassifier(n_neighbors=clf.best_params_['n_neighbors'], leaf_size=clf.best_params_['leaf_size'])
+    nearest_neighbour_classifier = KNeighborsClassifier(n_neighbors=clf.best_params_['n_neighbors'],
+                                                        leaf_size=clf.best_params_['leaf_size'])
 
     nearest_neighbour_classifier.fit(X_training, y_training)
 
     return nearest_neighbour_classifier
+
+
+def nearest_neighbours_test(nn_model, X_test, y_test):
+    val_predictions_nn = nn_model.predict(X_test)
+    print("MAE for Nearest Neighbour Classifier: {}".format(mean_absolute_error(y_test, val_predictions_nn)))
+    print("Accuracy Score for Nearest Neighbour  Classifier: {}".format(accuracy_score(y_test, val_predictions_nn)))
+    cm_2 = confusion_matrix(y_test, val_predictions_nn)
+    nn_plot = plt.axes()
+    sns.heatmap(cm_2, annot=True, fmt='d', ax=nn_plot)
+    nn_plot.set_title("Nearest Neighbour Heatmap")
+    plt.show()
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -189,33 +228,38 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
     @return
     clf : the classifier built in this function
     """
+    X_train, X_val, y_train, y_val = train_test_split(X_training, y_training, test_size=0.2, random_state=2)
 
-    tuned_parameters = [{'kernel': ['rbf'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]},
-                        {'kernel': ['linear'], 'C': [1, 10, 100, 1000]}]
+    tuned_parameters = [{'kernel': ['rbf', 'linear'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}]
 
-    scores = ['precision', 'recall']
+    print("# Tuning hyper-parameters for precision")
+    print()
 
-    for score in scores:
-        print("# Tuning hyper-parameters for %s" % score)
-        print()
+    clf = GridSearchCV(
+        SVC(), tuned_parameters, scoring='precision'
+    )
+    clf.fit(X_train, y_train)
 
-        clf = GridSearchCV(
-            SVC(), tuned_parameters, scoring='%s_macro' % score
-        )
-        clf.fit(X_training, y_training)
-
-        print("Best parameters set found on development set:")
-        print()
-        print(clf.best_params_)
-        print()
-        print("Grid scores on development set:")
-        print()
-        means = clf.cv_results_['mean_test_score']
-        stds = clf.cv_results_['std_test_score']
-        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-            print("%0.3f (+/-%0.03f) for %r"
-                  % (mean, std * 2, params))
-        print()
+    print("Best parameters set found on development set:")
+    print()
+    print(clf.best_params_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    means = clf.cv_results_['mean_test_score']
+    stds = clf.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean, std * 2, params))
+    print()
+    print("Detailed classification report:")
+    print()
+    print("The model is trained on the full development set.")
+    print("The scores are computed on the full evaluation set.")
+    print()
+    y_true, y_pred = y_val, clf.predict(X_val)
+    print(classification_report(y_true, y_pred))
+    print()
 
     svm_classifier = SVC(kernel=clf.best_params_['kernel'], C=clf.best_params_['C'], random_state=1)
 
@@ -224,8 +268,98 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
     return svm_classifier
 
 
+def svm_test(svm_model, X_test, y_test):
+    val_predictions_svm = svm_model.predict(X_test)
+    print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_test, val_predictions_svm)))
+    print("Accuracy Score for SVM Classifier: {}".format(accuracy_score(y_test, val_predictions_svm)))
+    cm_2 = confusion_matrix(y_test, val_predictions_svm)
+    svm_plot = plt.axes()
+    sns.heatmap(cm_2, annot=True, fmt='d', ax=svm_plot)
+    svm_plot.set_title("SVM Heatmap")
+    plt.show()
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# class NN():
+#     def __init__(self, X, y):
+#         self.X = X
+#         self.y = y
+#         self.model = None
+#
+#     def create_model(self, neurons=16):
+#         #  neuron_2=8, neuron_3=6
+#         self.model = Sequential()
+#         self.model.add(Dense(neurons, kernel_initializer='uniform', activation='relu', input_dim=30))
+#         self.model.add(Dense(8, kernel_initializer='uniform', activation='relu'))
+#         self.model.add(Dense(6, kernel_initializer='uniform', activation='relu'))
+#         self.model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
+#
+#         self.model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+#
+#     def build_nn(self, nn_model):
+#         self.model = KerasClassifier(build_fn=nn_model, epochs=50, batch_size=30, verbose=0)
+#         neurons = [16, 24, 32, 40]
+#         # neurons_2 = [2, 4, 6, 8, 10]
+#         # neurons_3 = [2, 4, 6, 8, 10]
+#         param_grid = dict(neurons=neurons)
+#         grid = GridSearchCV(estimator=self.model, param_grid=param_grid, cv=3)
+#         grid.fit(self.X, self.y)
+#         # return grid_result
+#
+#     def results(self, grid_result):
+#         print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+#         means = grid_result.cv_results_['mean_test_score']
+#         stds = grid_result.cv_results_['std_test_score']
+#         params = grid_result.cv_results_['params']
+#         for mean, stdev, param in zip(means, stds, params):
+#             print("%f (%f) with: %r" % (mean, stdev, param))
+
+class NN():
+    def __init__(self):
+        pass
+
+    def create_model(self, neurons_1=16, neurons_2=8, neurons_3=6):
+        #  neuron_2=8, neuron_3=6
+        model = Sequential()
+        model.add(Dense(neurons_1, kernel_initializer='uniform', activation='relu', input_dim=30))
+        model.add(Dense(neurons_2, kernel_initializer='uniform', activation='relu'))
+        model.add(Dense(neurons_3, kernel_initializer='uniform', activation='relu'))
+        model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
+
+        model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+        return model
+
+    # def build_nn(self, nn_model):
+    #     self.model = KerasClassifier(build_fn=nn_model, epochs=50, batch_size=30, verbose=0)
+    #     neurons = [16, 24, 32, 40]
+    #     # neurons_2 = [2, 4, 6, 8, 10]
+    #     # neurons_3 = [2, 4, 6, 8, 10]
+    #     param_grid = dict(neurons=neurons)
+    #     grid = GridSearchCV(estimator=self.model, param_grid=param_grid, cv=3)
+    #     grid.fit(self.X, self.y)
+    #     # return grid_result
+
+    # def results(self, grid_result):
+    #     print("Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
+    #     means = grid_result.cv_results_['mean_test_score']
+    #     stds = grid_result.cv_results_['std_test_score']
+    #     params = grid_result.cv_results_['params']
+    #     for mean, stdev, param in zip(means, stds, params):
+    #         print("%f (%f) with: %r" % (mean, stdev, param))
+
+
+def neural_network_model_creation():
+    # neurons_1=16, neurons_2=8, neurons_3=6
+    model = Sequential()
+    model.add(Dense(16, kernel_initializer='uniform', activation='relu', input_dim=30))
+    model.add(Dense(8, kernel_initializer='uniform', activation='relu'))
+    model.add(Dense(6, kernel_initializer='uniform', activation='relu'))
+    model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
+
+    model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+    return model
+
 
 def build_NeuralNetwork_classifier(X_training, y_training):
     """
@@ -240,48 +374,118 @@ def build_NeuralNetwork_classifier(X_training, y_training):
     @return
     clf : the classifier built in this function
     """
+    X_train, X_val, y_train, y_val = train_test_split(X_training, y_training, test_size=0.2, random_state=2)
 
-    model = Sequential()
-    model.add(Dense(units=16, kernel_initializer='uniform', activation='relu', input_dim=30))
-    model.add(Dense(units=8, kernel_initializer='uniform', activation='relu'))
-    model.add(Dense(units=6, kernel_initializer='uniform', activation='relu'))
-    model.add(Dense(units=1, kernel_initializer='uniform', activation='sigmoid'))
+    # neurons_1 = [8, 16, 24, 32, 40]
+    # neurons_2 = [2, 4, 6, 8, 10]
+    # neurons_3 = [2, 4, 6, 8, 10]
 
-    model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-    model.fit(X_training, y_training, epochs=100, batch_size=1)
+    # mod = neural_network_model_creation()
+    # fit = mod.fit(X_train, y_train, epochs=100, batch_size=1)
+    # model = KerasClassifier(build_fn=mod, batch_size=4, epochs=80, verbose=0)
+    # fitt = model.fit(X_train, y_train)
 
-    return model
+    nn = NN()
+    keras_model = KerasClassifier(build_fn=nn.create_model, batch_size=4, epochs=10, verbose=0)
+    neurons_1 = [8, 16, 24, 32, 40]
+    neurons_2 = [2, 4, 6, 8, 10]
+    neurons_3 = [2, 4, 6, 8, 10]
+    param_grid = dict(neurons_1=neurons_1, neurons_2=neurons_2, neurons_3=neurons_3)
+    neural_network = GridSearchCV(estimator=keras_model, param_grid=param_grid, cv=3)
+    neural_network.fit(X_train, y_train)
+    print("Best parameters set found on development set:")
+    print()
+    print(neural_network.best_params_)
+    print()
+    print("Grid scores on development set:")
+    print()
+    means = neural_network.cv_results_['mean_test_score']
+    stds = neural_network.cv_results_['std_test_score']
+    for mean, std, params in zip(means, stds, neural_network.cv_results_['params']):
+        print("%0.3f (+/-%0.03f) for %r"
+              % (mean, std * 2, params))
+    print()
+    print("Detailed classification report:")
+    print()
+    print("The model is trained on the full development set.")
+    print("The scores are computed on the full evaluation set.")
+    print()
+    y_true, y_pred = y_val, neural_network.predict(X_val)
+    print(classification_report(y_true, y_pred))
+    print()
 
-def neural_Network_testing(neural_network_classifier, X_val, y_val):
-    neural_network_classifier_pred = neural_network_classifier.predict(X_val)
-    print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))
-    print("Accuracy Score for Neural Network Classifier: {}".format(accuracy_score(y_val, neural_network_classifier_pred)))
+
+
+    # print("Best parameters set found on development set:")
+    # print()
+    # print(clf.best_params_)
+    # print()
+    # print("Grid scores on development set:")
+    # print()
+    # means = clf.cv_results_['mean_test_score']
+    # stds = clf.cv_results_['std_test_score']
+    # for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+    #     print("%0.3f (+/-%0.03f) for %r"
+    #           % (mean, std * 2, params))
+    # print()
+    # print("Detailed classification report:")
+    # print()
+    # print("The model is trained on the full development set.")
+    # print("The scores are computed on the full evaluation set.")
+    # print()
+    # y_true, y_pred = y_val, clf.predict(X_val)
+    # print(classification_report(y_true, y_pred))
+    # print()
+
+    # model.fit(X_training, y_training, epochs=50, batch_size=1)
+    #
+    # return model
+
+
+# def neural_Network_test(neural_network_classifier, X_test, y_test):
+#     neural_network_classifier_pred = neural_network_classifier.predict(X_test)
+#     print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_test, neural_network_classifier_pred)))
+#     print("Accuracy Score for Neural Network Classifier: {}".format(
+#         accuracy_score(y_test, neural_network_classifier_pred)))
+#     cm_2 = confusion_matrix(y_test, neural_network_classifier_pred)
+#     neuralnet_plot = plt.axes()
+#     sns.heatmap(cm_2, annot=True, fmt='d', ax=neuralnet_plot)
+#     neuralnet_plot.set_title("Neural Network Heatmap")
+#     plt.show()
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if __name__ == '__main__':
     path = "medical_records.data"
     X, y = prepare_dataset(path)
-    X, X_test, y, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    X_training, X_val, y_training, y_val = train_test_split(X, y, test_size=0.2, random_state=1)
+    X_training, X_test, y_training, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    decision_tree_classifier = build_DecisionTree_classifier(X, y)
+    # decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    # decision_tree_test(decision_tree_classifier, X_test, y_test)
+    #
     # nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
-    # svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
+    # nearest_neighbours_test(nearest_neighbour_classifier, X_test, y_test)
 
-    val_predictions_dt = decision_tree_classifier.predict(X_val)
+    # svm_classifer = build_SupportVectorMachine_classifier(X_training, y_training)
+    # svm_test(svm_classifer, X_test, y_test)
+
     # val_predictions_nn = nearest_neighbour_classifier.score(X_val, y_val)
     # val_predictions_svm = svm_classifier.predict(X_val)
 
-    print("MAE for Decision Tree Classifier: {}".format(mean_absolute_error(y_val, val_predictions_dt)))
-    print("Accuracy Score for Decision Tree Classifier: {}".format(accuracy_score(y_val, val_predictions_dt)))
-    cm_2 = confusion_matrix(y_test, decision_tree_classifier.predict(X_test))
-    sns.heatmap(cm_2, annot=True, fmt='d')
-    plt.show()
     # print("MAE for Nearest Neighbour Classifier: {}".format(val_predictions_nn))
     # print("MAE for SVM Classifier: {}".format(mean_absolute_error(y_val, val_predictions_svm)))
 
-    # neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
-    # #
+    # nn = NN(X_training, y_training)
+    # nn.create_model()
+    # grid_result = nn.build_nn(nn.create_model)
+    # nn.results(grid_result)
+
+
+    # cv_scores = cross_val_score(esti, X_training, y_training, cv=10)
+    # print(cv_scores.mean())
+    #
+    neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    # # #
     # neural_network_classifier_pred = neural_network_classifier.predict(X_val)
     # #
     # print("MAE for Neural Network Classifier: {}".format(mean_absolute_error(y_val, neural_network_classifier_pred)))

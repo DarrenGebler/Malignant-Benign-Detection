@@ -16,12 +16,14 @@ You are welcome to use the pandas library if you know it.
 import os
 import random
 import numpy as np
+
 seed_value = 56
 os.environ['PYTHONHASHSEED'] = str(seed_value)
 random.seed(seed_value)
 np.random.seed(seed_value)
 import pandas as pd
 import tensorflow as tf
+
 tf.random.set_seed(seed_value)
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -147,7 +149,8 @@ def build_DecisionTree_classifier(X_training, y_training):
     # Set Decision Tree Classifier model with best parameters
     decision_tree_classifier = DecisionTreeClassifier(criterion=dt_cv.best_params_['criterion'],
                                                       max_depth=dt_cv.best_params_['max_depth'],
-                                                      max_leaf_nodes=dt_cv.best_params_['max_leaf_nodes'], random_state=1)
+                                                      max_leaf_nodes=dt_cv.best_params_['max_leaf_nodes'],
+                                                      random_state=1)
 
     # Train Decision Tree Classifier model with training dataset
     decision_tree_classifier.fit(X_training, y_training)
@@ -295,7 +298,7 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
     X_train, X_val, y_train, y_val = train_test_split(X_training, y_training, test_size=0.2, random_state=2)
 
     # Define parameters to be tuned by GridSearchCV
-    tuned_parameters = [{'kernel': ['rbf', 'linear'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}]
+    tuned_parameters = [{'kernel': ['rbf', 'linear'], 'C': [1, 10, 100, 1000]}]
 
     print("# Tuning hyper-parameters for precision using SVM")
     print()
@@ -380,6 +383,7 @@ class NN:
     Neural Network Class used to initialise and create a neural network using Keras and Tensorflow.
     Implemented to prevent thread errors caused by running two neural networks simultaneously with GridSearchCV
     """
+
     def __init__(self):
         """
         Initialise Neural Network Class
@@ -438,8 +442,11 @@ def build_NeuralNetwork_classifier(X_training, y_training):
     neurons_2 = [1, 5, 10, 15, 20, 25, 30]
     param_grid = dict(neurons_1=neurons_1, neurons_2=neurons_2)
 
+    print("# Tuning hyper-parameters for precision using Neural Network")
+    print()
+
     # Find best parameters to use based on tuned_parameters. Score on precision
-    neural_network_cv = GridSearchCV(estimator=keras_model, param_grid=param_grid, cv=3, n_jobs=-1, scoring='Precision')
+    neural_network_cv = GridSearchCV(estimator=keras_model, param_grid=param_grid, cv=3, n_jobs=-1)
 
     # Fit model to train data
     neural_network_cv.fit(X_train, y_train)
@@ -472,7 +479,7 @@ def build_NeuralNetwork_classifier(X_training, y_training):
     nn_model = nn.create_model(neural_network_cv.best_params_['neurons_1'], neural_network_cv.best_params_['neurons_2'])
 
     # Train Neural Network Classifier model with training dataset
-    nn_model.fit(X_training, y_training, epochs=50, batch_size=1)
+    nn_model.fit(X_training, y_training, epochs=50, batch_size=4)
 
     # Return Neural Network Classifier model
     return nn_model
@@ -494,13 +501,11 @@ def neural_Network_test(neural_network_classifier, X_test, y_test):
         neural_network_classifier.evaluate(X_test, y_test)[1]))
 
     # Convert floats to integers and convert to numpy array
-    pred = []
-    for nums in neural_network_classifier_pred:
-        pred.append(round(nums))
-    pred_np = np.array(pred)
+    pred_nums = np.around(neural_network_classifier_pred)
+    pred_nums.astype(int)
 
     # Create confusion matrix with right and wrong estimations
-    cm_2 = confusion_matrix(y_test, pred_np)
+    cm_2 = confusion_matrix(y_test, pred_nums)
 
     # Create matplotlib figure
     neuralnet_plot = plt.axes()
@@ -526,25 +531,28 @@ if __name__ == '__main__':
     # Split dataset into training and testing datasets with 80:20 split
     X_training, X_test, y_training, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train a Decision Tree Classifier on training dataset
-    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
-    # Validate Decision Tree Classifier model on test dataset
-    decision_tree_test(decision_tree_classifier, X_test, y_test)
+    """Uncomment this section to run the decision tree classifier and return results and plot a heatmap"""
+    # # Train a Decision Tree Classifier on training dataset
+    # decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    # # Validate Decision Tree Classifier model on test dataset
+    # decision_tree_test(decision_tree_classifier, X_test, y_test)
 
+    """Uncomment this section to run the nearest neighbour classifier and return results and plot a heatmap"""
     # Train a Nearest Neighbour Classifier on training dataset
     nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
     # Validate Nearest Neighbour Classifier model on test dataset
     nearest_neighbours_test(nearest_neighbour_classifier, X_test, y_test)
 
+    """Uncomment this section to run the support vector machine classifier and return results and plot a heatmap"""
     # Train a Support Vector Machine Classifier on training dataset
     svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
     # Validate Support Vector Machine Classifier model on test dataset
     svm_test(svm_classifier, X_test, y_test)
 
+    """Uncomment this section to run the neural network classifier and return results and plot a heatmap"""
     # Train a Neural Network Classifier on training dataset
     neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
     # Validate Neural Network Classifier model on test dataset
     neural_Network_test(neural_network_classifier, X_test, y_test)
-
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

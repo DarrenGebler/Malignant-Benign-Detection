@@ -110,7 +110,7 @@ def build_DecisionTree_classifier(X_training, y_training):
     tuned_parameters = [{'criterion': ['gini'], 'max_depth': [1, 5, 25, 50, 100, 250, 500],
                          'max_leaf_nodes': [None, 5, 25, 50, 100, 250, 500], 'random_state': [1]}]
 
-    print("# Tuning hyper-parameters for precision")
+    print("# Tuning hyper-parameters for precision using Decision Tree")
     print()
 
     # Find best parameters to use based on tuned_parameters. Score on precision
@@ -121,11 +121,11 @@ def build_DecisionTree_classifier(X_training, y_training):
     # Fit model to train data
     dt_cv.fit(X_train, y_train)
 
-    print("Best parameters set found on development set:")
+    print("Best parameters set found on Decision Tree development set:")
     print()
     print(dt_cv.best_params_)
     print()
-    print("Grid scores on development set:")
+    print("Grid scores on Decision Tree development set:")
     print()
     # Print mean, standard deviation and parameters of each combination of parameters
     means = dt_cv.cv_results_['mean_test_score']
@@ -134,7 +134,7 @@ def build_DecisionTree_classifier(X_training, y_training):
         print("%0.3f (+/-%0.03f) for %r"
               % (mean, std * 2, params))
     print()
-    print("Detailed classification report:")
+    print("Detailed classification report for Decision Tree:")
     print()
     print("The model is trained on the full development set.")
     print("The scores are computed on the full evaluation set.")
@@ -205,7 +205,7 @@ def build_NearrestNeighbours_classifier(X_training, y_training):
     tuned_parameters = [
         {'n_neighbors': [1, 3, 5, 10, 15, 20, 30, 50, 100], 'leaf_size': [1, 3, 5, 10, 15, 20, 30, 50, 100]}]
 
-    print("# Tuning hyper-parameters for %s" % 'precision')
+    print("# Tuning hyper-parameters for precision using Nearest Neighbours")
     print()
 
     # Find best parameters to use based on tuned_parameters. Score on precision
@@ -214,11 +214,11 @@ def build_NearrestNeighbours_classifier(X_training, y_training):
     # Fit model to train data
     nn_cv.fit(X_train, y_train)
 
-    print("Best parameters set found on development set:")
+    print("Best parameters set found on Nearest Neighbour development set:")
     print()
     print(nn_cv.best_params_)
     print()
-    print("Grid scores on development set:")
+    print("Grid scores on Nearest Neighbour development set:")
     print()
     # Print mean, standard deviation and parameters of each combination of parameters
     means = nn_cv.cv_results_['mean_test_score']
@@ -227,7 +227,7 @@ def build_NearrestNeighbours_classifier(X_training, y_training):
         print("%0.3f (+/-%0.03f) for %r"
               % (mean, std * 2, params))
     print()
-    print("Detailed classification report:")
+    print("Detailed classification report for Nearest Neighbour:")
     print()
     print("The model is trained on the full development set.")
     print("The scores are computed on the full evaluation set.")
@@ -297,7 +297,7 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
     # Define parameters to be tuned by GridSearchCV
     tuned_parameters = [{'kernel': ['rbf', 'linear'], 'gamma': [1e-3, 1e-4], 'C': [1, 10, 100, 1000]}]
 
-    print("# Tuning hyper-parameters for precision")
+    print("# Tuning hyper-parameters for precision using SVM")
     print()
 
     # Find best parameters to use based on tuned_parameters. Score on precision
@@ -308,11 +308,11 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
     # Fit model to train data
     svm_cv.fit(X_train, y_train)
 
-    print("Best parameters set found on development set:")
+    print("Best parameters set found on SVM development set:")
     print()
     print(svm_cv.best_params_)
     print()
-    print("Grid scores on development set:")
+    print("Grid scores on SVM development set:")
     print()
     # Print mean, standard deviation and parameters of each combination of parameters
     means = svm_cv.cv_results_['mean_test_score']
@@ -321,7 +321,7 @@ def build_SupportVectorMachine_classifier(X_training, y_training):
         print("%0.3f (+/-%0.03f) for %r"
               % (mean, std * 2, params))
     print()
-    print("Detailed classification report:")
+    print("Detailed classification report for SVM:")
     print()
     print("The model is trained on the full development set.")
     print("The scores are computed on the full evaluation set.")
@@ -444,11 +444,11 @@ def build_NeuralNetwork_classifier(X_training, y_training):
     # Fit model to train data
     neural_network_cv.fit(X_train, y_train)
 
-    print("Best parameters set found on development set:")
+    print("Best parameters set found on development set using Neural Network:")
     print()
     print(neural_network_cv.best_params_)
     print()
-    print("Grid scores on development set:")
+    print("Grid scores on Neural Network development set:")
     print()
     # Print mean, standard deviation and parameters of each combination of parameters
     means = neural_network_cv.cv_results_['mean_test_score']
@@ -457,7 +457,7 @@ def build_NeuralNetwork_classifier(X_training, y_training):
         print("%0.3f (+/-%0.03f) for %r"
               % (mean, std * 2, params))
     print()
-    print("Detailed classification report:")
+    print("Detailed classification report for Neural Network:")
     print()
     print("The model is trained on the full development set.")
     print("The scores are computed on the full evaluation set.")
@@ -517,20 +517,33 @@ def neural_Network_test(neural_network_classifier, X_test, y_test):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 if __name__ == '__main__':
+    # Sets path to dataset
     path = "medical_records.data"
+
+    # Get X and y values from dataset
     X, y = prepare_dataset(path)
+
+    # Split dataset into training and testing datasets with 80:20 split
     X_training, X_test, y_training, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
-    # decision_tree_test(decision_tree_classifier, X_test, y_test)
-    #
-    # nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
-    # nearest_neighbours_test(nearest_neighbour_classifier, X_test, y_test)
+    # Train a Decision Tree Classifier on training dataset
+    decision_tree_classifier = build_DecisionTree_classifier(X_training, y_training)
+    # Validate Decision Tree Classifier model on test dataset
+    decision_tree_test(decision_tree_classifier, X_test, y_test)
 
-    # svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
-    # svm_test(svm_classifier, X_test, y_test)
-    #
+    # Train a Nearest Neighbour Classifier on training dataset
+    nearest_neighbour_classifier = build_NearrestNeighbours_classifier(X_training, y_training)
+    # Validate Nearest Neighbour Classifier model on test dataset
+    nearest_neighbours_test(nearest_neighbour_classifier, X_test, y_test)
+
+    # Train a Support Vector Machine Classifier on training dataset
+    svm_classifier = build_SupportVectorMachine_classifier(X_training, y_training)
+    # Validate Support Vector Machine Classifier model on test dataset
+    svm_test(svm_classifier, X_test, y_test)
+
+    # Train a Neural Network Classifier on training dataset
     neural_network_classifier = build_NeuralNetwork_classifier(X_training, y_training)
+    # Validate Neural Network Classifier model on test dataset
     neural_Network_test(neural_network_classifier, X_test, y_test)
 
 
